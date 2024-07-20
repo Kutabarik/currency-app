@@ -1,0 +1,64 @@
+services:
+  web:
+    build:
+      context: ./docker/nginx/
+      dockerfile: Dockerfile
+    image: nginx:latest
+    container_name: web
+    restart: always
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx:/etc/nginx/conf.d
+    ports:
+      - "80:80"
+    networks:
+      - web
+    depends_on:
+      - php
+
+  php:
+    build:
+      context: ./docker/php/
+      dockerfile: Dockerfile
+    container_name: php
+    restart: always
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - web
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: password
+    volumes:
+      - ./docker/mysql:/var/lib/mysql
+    networks:
+      - web
+    ports:
+      - "3306:3306"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: mysql
+      MYSQL_USERNAME: root
+      PMA_USERNAME: root
+      PMA_PASSWORD: password
+    ports:
+      - "8080:80"
+    networks:
+      - web
+    depends_on:
+      - mysql
+
+networks:
+  web:
+    driver: bridge
