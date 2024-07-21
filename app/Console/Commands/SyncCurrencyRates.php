@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SyncCurrencyRates extends Command
 {
@@ -28,28 +29,39 @@ class SyncCurrencyRates extends Command
 	 */
 	public function handle()
 	{
-        $response = Http::get('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
-        $data = $response->json();
+		Log::info("Starting currency rates synchronization.");
 
-        $date = Carbon::parse($data['date']);
-        $rates = $data['usd'];
+		try {
+			$response = Http::get(
+				"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
+			);
+			$data = $response->json();
 
-        $updateData = [];
-        foreach ($rates as $currency => $rate) {
-            $updateData[] = [
-                'currency_code' => $currency,
-                'rate' => $rate,
-                'updated_at' => $date,
-                'created_at' => now(),
-            ];
-        }
+			$date = Carbon::parse($data["date"]);
+			$rates = $data["usd"];
 
-        DB::table('currency_rates')->upsert(
-            $updateData,
-            ['currency_code'],
-            ['rate', 'updated_at']
-        );
+			$updateData = [];
+			foreach ($rates as $currency => $rate) {
+				$updateData[] = [
+					"currency_code" => $currency,
+					"rate" => $rate,
+					"updated_at" => now(),
+					"created_at" => now(),
+				];
+			}
 
-        $this->info('Currency rates synchronized successfully.');
+			DB::table("currency_rates")->upsert(
+				$updateData,
+				["currency_code"],
+				["rate", "updated_at"]
+			);
+		} catch (\Exception $e) {
+			Log::error(
+				"Error during currency rates synchronization: " .
+					$e->getMessage()
+			);
+		}
+
+		Log::info("Currency rates synchronized successfully.");
 	}
 }
